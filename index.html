@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Racing Performance Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #fff;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #f093fb, #f5576c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .vehicle-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            font-size: 1.1em;
+            flex-wrap: wrap;
+        }
+
+        .info-item {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .file-upload {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            margin-bottom: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: #f5576c;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .file-upload-label {
+            font-size: 1.2em;
+            color: #f5576c;
+            cursor: pointer;
+        }
+
+        .uploaded-files {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .uploaded-files h3 {
+            color: #f5576c;
+            margin-bottom: 15px;
+        }
+
+        .file-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .file-item-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-status {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+        }
+
+        .status-loading {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+
+        .status-complete {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+
+        .status-error {
+            background: rgba(248, 113, 113, 0.2);
+            color: #f87171;
+        }
+
+        .remove-btn {
+            padding: 6px 12px;
+            background: rgba(248, 113, 113, 0.3);
+            border: none;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .remove-btn:hover {
+            background: rgba(248, 113, 113, 0.5);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .chart-container h2 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            color: #f5576c;
+            border-bottom: 2px solid rgba(245, 87, 108, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+        }
+
+        .large-chart {
+            grid-column: span 2;
+        }
+
+        .large-chart .chart-wrapper {
+            height: 400px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.2), rgba(245, 87, 108, 0.2));
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #f5576c;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .control-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group label {
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .control-group select {
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 1em;
+        }
+
+        .control-group select:focus {
+            outline: none;
+            border-color: #f5576c;
+        }
+
+        .lap-selector {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .lap-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .lap-checkbox:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .lap-checkbox input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .lap-checkbox.selected {
+            background: rgba(245, 87, 108, 0.3);
+            border: 1px solid #f5576c;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .info-box {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .info-box h3 {
+            color: #4ade80;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .large-chart {
+                grid-column: span 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏁 Racing Performance Dashboard</h1>
+        <div class="vehicle-info">
+            <div class="info-item">Vehicle: <strong id="vehicleId">-</strong></div>
+            <div class="info-item">Number: <strong id="vehicleNum">-</strong></div>
+            <div class="info-item">Event: <strong id="eventName">-</strong></div>
+            <div class="info-item">Session: <strong id="sessionName">-</strong></div>
+            <div class="info-item">Total Laps: <strong id="totalLaps">0</strong></div>
+        </div>
+    </div>
+
+    <div id="uploadSection">
+        <div class="file-upload" id="fileUploadArea">
+            <input type="file" id="fileInput" accept=".csv" multiple>
+            <label for="fileInput" class="file-upload-label">
+                📁 Click to upload CSV files or drag and drop here
+            </label>
+            <p style="margin-top: 10px; opacity: 0.7;">Upload multiple CSV files (one per lap)</p>
+            <p style="margin-top: 5px; opacity: 0.7; font-size: 0.9em;">Tip: Name files like lap1.csv, lap2.csv, etc.</p>
+        </div>
+
+        <div id="uploadedFilesSection" class="uploaded-files hidden">
+            <h3>📂 Uploaded Files (<span id="fileCount">0</span>)</h3>
+            <div class="file-list" id="fileList"></div>
+            <div class="action-buttons">
+                <button class="btn btn-primary" id="generateDashboard">🚀 Generate Dashboard</button>
+                <button class="btn btn-secondary" id="addMoreFiles">+ Add More Files</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboardContent" class="hidden">
+        <div class="info-box">
+            <h3>📊 Multi-File Lap Comparison</h3>
+            <p>Each uploaded file represents a lap. Select multiple laps below to overlay and compare their telemetry data by distance around the track.</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-row">
+                <div class="control-group">
+                    <label>📍 Select Laps to Compare:</label>
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="lap-selector" id="lapSelector"></div>
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Reference Lap (Baseline):</label>
+                    <select id="referenceLap">
+                        <option value="">None</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Overlay Variable:</label>
+                    <select id="overlayVariable">
+                        <option value="speed">Speed</option>
+                        <option value="aps">Throttle Position</option>
+                        <option value="pbrake_f">Brake Pressure (Front)</option>
+                        <option value="Steering_Angle">Steering Angle</option>
+                        <option value="gear">Gear</option>
+                        <option value="nmot">Engine RPM</option>
+                        <option value="accy_can">Lateral G-Force</option>
+                        <option value="accx_can">Longitudinal G-Force</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Data Points:</label>
+                    <span id="dataPoints">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Max Speed</div>
+                <div class="metric-value" id="maxSpeed">-</div>
+                <div class="metric-label">km/h</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Max RPM</div>
+                <div class="metric-value" id="maxRPM">-</div>
+                <div class="metric-label">rev/min</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Max Lateral G</div>
+                <div class="metric-value" id="maxLatG">-</div>
+                <div class="metric-label">g-force</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Max Long G</div>
+                <div class="metric-value" id="maxLongG">-</div>
+                <div class="metric-label">g-force</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Avg Throttle</div>
+                <div class="metric-value" id="avgThrottle">-</div>
+                <div class="metric-label">%</div>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="chart-container large-chart">
+                <h2>📊 Multi-Lap Overlay: <span id="overlayTitle">Speed vs Distance</span></h2>
+                <div class="chart-wrapper">
+                    <canvas id="overlayChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2>⏱️ Lap Time Delta Analysis</h2>
+                <div class="chart-wrapper">
+                    <canvas id="deltaChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2>🎯 G-Force Distribution (Traction Circle)</h2>
+                <div class="chart-wrapper">
+                    <canvas id="gForceChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2>🎮 Driver Inputs (Throttle & Brake)</h2>
+                <div class="chart-wrapper">
+                    <canvas id="inputsChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2>⚙️ Gear Usage Distribution</h2>
+                <div class="chart-wrapper">
+                    <canvas id="gearChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2>🔧 Engine RPM vs Speed</h2>
+                <div class="chart-wrapper">
+                    <canvas id="rpmSpeedChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2>🎛️ Steering Angle vs Lateral G</h2>
+                <div class="chart-wrapper">
+                    <canvas id="steeringChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h2>📈 Acceleration Components</h2>
+                <div class="chart-wrapper">
+                    <canvas id="accelChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lapData = {};
+        let charts = {};
+        let selectedLaps = new Set();
+        let availableLaps = [];
+        let uploadedFiles = [];
+        let fileDataMap = {};
+
+        const lapColors = [
+            '#f5576c', '#4ade80', '#3b82f6', '#fbbf24', '#8b5cf6', 
+            '#fb923c', '#ec4899', '#06b6d4', '#84cc16', '#f97316'
+        ];
+
+        // File upload handling
+        const fileInput = document.getElementById('fileInput');
+        const fileUploadArea = document.getElementById('fileUploadArea');
+        const uploadedFilesSection = document.getElementById('uploadedFilesSection');
+
+        fileInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        fileUploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            fileUploadArea.style.borderColor = '#f5576c';
+        });
+
+        fileUploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            fileUploadArea.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+        });
+
+        fileUploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            fileUploadArea.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+            const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.csv'));
+            if (files.length > 0) {
+                handleFiles(files);
+            }
+        });
+
+        document.getElementById('addMoreFiles').addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        document.getElementById('generateDashboard').addEventListener('click', function() {
+            if (uploadedFiles.length === 0) {
+                alert('Please upload at least one CSV file');
+                return;
+            }
+            processAllFiles();
+        });
+
+        function handleFiles(files) {
+            uploadedFilesSection.classList.remove('hidden');
+            
+            files.forEach((file, idx) => {
+                const fileId = `file_${Date.now()}_${idx}`;
+                uploadedFiles.push({ id: fileId, file: file, status: 'loading' });
+                
+                addFileToList(fileId, file.name, 'loading');
+                loadFile(file, fileId);
+            });
+            
+            updateFileCount();
+        }
+
+        function addFileToList(fileId, fileName, status) {
+            const fileList = document.getElementById('fileList');
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.id = fileId;
+            fileItem.innerHTML = `
+                <div class="file-item-info">
+                    <span>📄 ${fileName}</span>
+                    <span class="file-status status-${status}" id="${fileId}-status">
+                        ${status === 'loading' ? '⏳ Loading...' : status === 'complete' ? '✓ Ready' : '✗ Error'}
+                    </span>
+                </div>
+                <button class="remove-btn" onclick="removeFile('${fileId}')">Remove</button>
+            `;
+            fileList.appendChild(fileItem);
+        }
+
+        function updateFileStatus(fileId, status, message = null) {
+            const statusEl = document.getElementById(`${fileId}-status`);
+            if (statusEl) {
+                statusEl.className = `file-status status-${status}`;
+                statusEl.textContent = message || (status === 'complete' ? '✓ Ready' : status === 'loading' ? '⏳ Loading...' : '✗ Error');
+            }
+            
+            const file = uploadedFiles.find(f => f.id === fileId);
+            if (file) file.status = status;
+        }
+
+        function removeFile(fileId) {
+            const fileEl = document.getElementById(fileId);
+            if (fileEl) fileEl.remove();
+            
+            uploadedFiles = uploadedFiles.filter(f => f.id !== fileId);
+            delete fileDataMap[fileId];
+            updateFileCount();
+            
+            if (uploadedFiles.length === 0) {
+                uploadedFilesSection.classList.add('hidden');
+            }
+        }
+
+        function updateFileCount() {
+            document.getElementById('fileCount').textContent = uploadedFiles.length;
+        }
+
+        function loadFile(file, fileId) {
+            const sampleRate = 5; // Keep every 5th point
+            let rowCount = 0;
+            const data = [];
+
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                chunk: function(results) {
+                    results.data.forEach(row => {
+                        if (row.telemetry_name && rowCount % sampleRate === 0) {
+                            data.push(row);
+                        }
+                        rowCount++;
+                    });
+                },
+                complete: function() {
+                    fileDataMap[fileId] = data;
+                    updateFileStatus(fileId, 'complete', `✓ ${data.length} samples`);
+                },
+                error: function(error) {
+                    updateFileStatus(fileId, 'error', '✗ Failed');
+                    console.error('Error loading file:', error);
+                }
+            });
+        }
+
+        function processAllFiles() {
+            lapData = {};
+            let lapNumber = 1;
+            
+            uploadedFiles.forEach(fileInfo => {
+                const data = fileDataMap[fileInfo.id];
+                if (!data) return;
+                
+                // Extract lap number from filename if possible
+                const match = fileInfo.file.name.match(/lap[\s_-]?(\d+)/i);
+                const lap = match ? parseInt(match[1]) : lapNumber++;
+                
+                lapData[lap] = {};
+                
+                data.forEach(row => {
+                    const name = row.telemetry_name;
+                    if (!lapData[lap][name]) lapData[lap][name] = [];
+                    
+                    lapData[lap][name].push({
+                        timestamp: new Date(row.timestamp),
+                        distance: parseFloat(row.Laptrigger_lapdist_dls) || 0,
+                        value: parseFloat(row.telemetry_value)
+                    });
+                });
+                
+                // Sort by distance
+                Object.keys(lapData[lap]).forEach(param => {
+                    lapData[lap][param].sort((a, b) => a.distance - b.distance);
+                });
+            });
+
+            availableLaps = Object.keys(lapData).map(Number).sort((a, b) => a - b);
+            
+            // Update metadata
+            const firstFile = fileDataMap[uploadedFiles[0].id];
+            if (firstFile && firstFile.length > 0) {
+                const firstRow = firstFile[0];
+                document.getElementById('vehicleId').textContent = firstRow.vehicle_id || '-';
+                document.getElementById('vehicleNum').textContent = firstRow.vehicle_number || '-';
+                document.getElementById('eventName').textContent = firstRow.meta_event || '-';
+                document.getElementById('sessionName').textContent = firstRow.meta_session || '-';
+            }
+            
+            document.getElementById('totalLaps').textContent = availableLaps.length;
+            
+            let totalPoints = 0;
+            Object.values(fileDataMap).forEach(data => totalPoints += data.length);
+            document.getElementById('dataPoints').textContent = totalPoints.toLocaleString();
+
+            // Hide upload section, show dashboard
+            document.getElementById('uploadSection').classList.add('hidden');
+            document.getElementById('dashboardContent').classList.remove('hidden');
+
+            createLapSelector();
+            
+            if (availableLaps.length > 0) {
+                selectedLaps.add(availableLaps[0]);
+                updateLapSelection();
+            }
+
+            calculateMetrics();
+            createCharts();
+        }
+
+        function createLapSelector() {
+            const selector = document.getElementById('lapSelector');
+            const refSelect = document.getElementById('referenceLap');
+            
+            selector.innerHTML = '';
+            refSelect.innerHTML = '<option value="">None</option>';
+
+            availableLaps.forEach((lap, idx) => {
+                const div = document.createElement('div');
+                div.className = 'lap-checkbox';
+                div.innerHTML = `
+                    <input type="checkbox" id="lap${lap}" value="${lap}">
+                    <label for="lap${lap}" style="cursor: pointer;">Lap ${lap}</label>
+                    <div style="width: 12px; height: 12px; background: ${lapColors[idx % lapColors.length]}; border-radius: 50%; margin-left: 5px;"></div>
+                `;
+                
+                const checkbox = div.querySelector('input');
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        selectedLaps.add(parseInt(this.value));
+                    } else {
+                        selectedLaps.delete(parseInt(this.value));
+                    }
+                    updateLapSelection();
+                });
+                
+                selector.appendChild(div);
+
+                const option = document.createElement('option');
+                option.value = lap;
+                option.textContent = `Lap ${lap}`;
+                refSelect.appendChild(option);
+            });
+
+            refSelect.addEventListener('change', updateOverlayChart);
+            document.getElementById('overlayVariable').addEventListener('change', updateOverlayChart);
+        }
+
+        function updateLapSelection() {
+            availableLaps.forEach(lap => {
+                const checkbox = document.getElementById(`lap${lap}`);
+                const parent = checkbox.parentElement;
+                if (selectedLaps.has(lap)) {
+                    checkbox.checked = true;
+                    parent.classList.add('selected');
+                } else {
+                    checkbox.checked = false;
+                    parent.classList.remove('selected');
+                }
+            });
+
+            updateOverlayChart();
+        }
+
+        function calculateMetrics() {
+            let allSpeeds = [], allRPMs = [], allLatGs = [], allLongGs = [], allThrottles = [];
+
+            Object.values(lapData).forEach(lap => {
+                if (lap.speed) allSpeeds.push(...lap.speed.map(d => d.value));
+                if (lap.nmot) allRPMs.push(...lap.nmot.map(d => d.value));
+                if (lap.accy_can) allLatGs.push(...lap.accy_can.map(d => Math.abs(d.value)));
+                if (lap.accx_can) allLongGs.push(...lap.accx_can.map(d => Math.abs(d.value)));
+                if (lap.aps) allThrottles.push(...lap.aps.map(d => d.value));
+            });
+
+            document.getElementById('maxSpeed').textContent = allSpeeds.length ? Math.max(...allSpeeds).toFixed(1) : '-';
+            document.getElementById('maxRPM').textContent = allRPMs.length ? Math.max(...allRPMs).toFixed(0) : '-';
+            document.getElementById('maxLatG').textContent = allLatGs.length ? Math.max(...allLatGs).toFixed(2) : '-';
+            document.getElementById('maxLongG').textContent = allLongGs.length ? Math.max(...allLongGs).toFixed(2) : '-';
+            document.getElementById('avgThrottle').textContent = allThrottles.length ? 
+                (allThrottles.reduce((a, b) => a + b, 0) / allThrottles.length).toFixed(1) : '-';
+        }
+
+        function updateOverlayChart() {
+            if (!charts.overlay) return;
+
+            const variable = document.getElementById('overlayVariable').value;
+            const refLap = parseInt(document.getElementById('referenceLap').value) || null;
+
+            const variableLabels = {
+                speed: 'Speed (km/h)',
+                aps: 'Throttle Position (%)',
+                pbrake_f: 'Brake Pressure (Front)',
+                Steering_Angle: 'Steering Angle (°)',
+                gear: 'Gear',
+                nmot: 'Engine RPM',
+                accy_can: 'Lateral G-Force',
+                accx_can: 'Longitudinal G-Force'
+            };
+
+            document.getElementById('overlayTitle').textContent = `${variableLabels[variable]} vs Distance`;
+
+            const datasets = [];
+            let lapIndex = 0;
+
+            Array.from(selectedLaps).sort((a, b) => a - b).forEach(lap => {
+                if (lapData[lap] && lapData[lap][variable]) {
+                    const data = lapData[lap][variable];
+                    datasets.push({
+                        label: `Lap ${lap}${refLap === lap ? ' (Reference)' : ''}`,
+                        data: data.map(d => ({ x: d.distance, y: d.value })),
+                        borderColor: lapColors[lapIndex % lapColors.length],
+                        backgroundColor: lapColors[lapIndex % lapColors.length] + '20',
+                        borderWidth: refLap === lap ? 3 : 2,
+                        tension: 0.4,
+                        pointRadius: 0
+                    });
+                    lapIndex++;
+                }
+            });
+
+            charts.overlay.data.datasets = datasets;
+            charts.overlay.update();
+
+            updateDeltaChart(refLap);
+        }
+
+        function updateDeltaChart(refLap) {
+            if (!charts.delta || !refLap || selectedLaps.size < 2) {
+                if (charts.delta) {
+                    charts.delta.data.datasets = [];
+                    charts.delta.update();
+                }
+                return;
+            }
+
+            const refData = lapData[refLap]?.speed;
+            if (!refData) return;
+
+            const datasets = [];
+            let lapIndex = 0;
+
+            Array.from(selectedLaps).sort((a, b) => a - b).forEach(lap => {
+                if (lap === refLap) return;
+                
+                const compareData = lapData[lap]?.speed;
+                if (!compareData) return;
+
+                const deltaPoints = [];
+                compareData.forEach(point => {
+                    const refPoint = refData.find(r => Math.abs(r.distance - point.distance) < 10);
+                    if (refPoint) {
+                        const delta = point.value - refPoint.value;
+                        deltaPoints.push({ x: point.distance, y: delta });
+                    }
+                });
+
+                datasets.push({
+                    label: `Lap ${lap} vs Lap ${refLap}`,
+                    data: deltaPoints,
+                    borderColor: lapColors[lapIndex % lapColors.length],
+                    backgroundColor: lapColors[lapIndex % lapColors.length] + '20',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    fill: true
+                });
+                lapIndex++;
+            });
+
+            charts.delta.data.datasets = datasets;
+            charts.delta.update();
+        }
+
+        function createCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                },
+                scales: {
+                    x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                }
+            };
+
+            // Overlay Chart
+            charts.overlay = new Chart(document.getElementById('overlayChart'), {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        x: { 
+                            type: 'linear',
+                            title: { display: true, text: 'Distance (m)', color: '#fff' }, 
+                            ticks: { color: '#fff' }, 
+                            grid: { color: 'rgba(255,255,255,0.1)' } 
+                        },
+                        y: { 
+                            title: { display: true, text: 'Value', color: '#fff' },
+                            ticks: { color: '#fff' }, 
+                            grid: { color: 'rgba(255,255,255,0.1)' } 
+                        }
+                    }
+                }
+            });
+
+            // Delta Chart
+            charts.delta = new Chart(document.getElementById('deltaChart'), {
+                type: 'line',
+                data: { datasets: [] },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        x: { 
+                            type: 'linear',
+                            title: { display: true, text: 'Distance (m)', color: '#fff' }, 
+                            ticks: { color: '#fff' }, 
+                            grid: { color: 'rgba(255,255,255,0.1)' } 
+                        },
+                        y: { 
+                            title: { display: true, text: 'Speed Delta (km/h)', color: '#fff' },
+                            ticks: { color: '#fff' }, 
+                            grid: { color: 'rgba(255,255,255,0.1)' } 
+                        }
+                    }
+                }
+            });
+
+            const firstLap = Array.from(selectedLaps)[0] || availableLaps[0];
+            const data = lapData[firstLap] || {};
+
+            // G-Force Scatter
+            const latGs = data.accy_can || [];
+            const longGs = data.accx_can || [];
+            const minLen = Math.min(latGs.length, longGs.length);
+            charts.gForce = new Chart(document.getElementById('gForceChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'G-Forces',
+                        data: Array.from({ length: minLen }, (_, i) => ({
+                            x: latGs[i].value,
+                            y: longGs[i].value
+                        })),
+                        backgroundColor: 'rgba(240, 147, 251, 0.6)',
+                        borderColor: '#f093fb',
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        x: { title: { display: true, text: 'Lateral G', color: '#fff' }, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        y: { title: { display: true, text: 'Longitudinal G', color: '#fff' }, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    }
+                }
+            });
+
+            // Driver Inputs
+            const throttle = data.aps || [];
+            const brakeFront = data.pbrake_f || [];
+            const maxLen = Math.max(throttle.length, brakeFront.length);
+            charts.inputs = new Chart(document.getElementById('inputsChart'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: maxLen }, (_, i) => i),
+                    datasets: [{
+                        label: 'Throttle Position (%)',
+                        data: throttle.map(d => d.value),
+                        borderColor: '#4ade80',
+                        backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3
+                    }, {
+                        label: 'Brake Pressure (Front)',
+                        data: brakeFront.map(d => d.value),
+                        borderColor: '#f87171',
+                        backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3
+                    }]
+                },
+                options: chartOptions
+            });
+
+            // Gear Distribution
+            const gears = data.gear || [];
+            const gearCounts = {};
+            gears.forEach(d => {
+                const gear = Math.round(d.value);
+                gearCounts[gear] = (gearCounts[gear] || 0) + 1;
+            });
+            charts.gear = new Chart(document.getElementById('gearChart'), {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(gearCounts).map(g => `Gear ${g}`),
+                    datasets: [{
+                        data: Object.values(gearCounts),
+                        backgroundColor: ['#f87171', '#fb923c', '#fbbf24', '#4ade80', '#3b82f6', '#8b5cf6'],
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#fff' } } }
+                }
+            });
+
+            // RPM vs Speed
+            const rpms = data.nmot || [];
+            const speeds = data.speed || [];
+            const rpmSpeedLen = Math.min(rpms.length, speeds.length);
+            charts.rpmSpeed = new Chart(document.getElementById('rpmSpeedChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'RPM vs Speed',
+                        data: Array.from({ length: rpmSpeedLen }, (_, i) => ({
+                            x: speeds[i].value,
+                            y: rpms[i].value
+                        })),
+                        backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                        borderColor: '#3b82f6',
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        x: { title: { display: true, text: 'Speed (km/h)', color: '#fff' }, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        y: { title: { display: true, text: 'RPM', color: '#fff' }, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    }
+                }
+            });
+
+            // Steering vs Lateral G
+            const steering = data.Steering_Angle || [];
+            const steeringLatGs = data.accy_can || [];
+            const steeringLen = Math.min(steering.length, steeringLatGs.length);
+            charts.steering = new Chart(document.getElementById('steeringChart'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Steering vs Lateral G',
+                        data: Array.from({ length: steeringLen }, (_, i) => ({
+                            x: steering[i].value,
+                            y: steeringLatGs[i].value
+                        })),
+                        backgroundColor: 'rgba(251, 146, 60, 0.6)',
+                        borderColor: '#fb923c',
+                        pointRadius: 3
+                    }]
+                },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        x: { title: { display: true, text: 'Steering Angle', color: '#fff' }, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        y: { title: { display: true, text: 'Lateral G', color: '#fff' }, ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                    }
+                }
+            });
+
+            // Acceleration Components
+            const accxData = data.accx_can || [];
+            const accyData = data.accy_can || [];
+            const accelLen = Math.max(accxData.length, accyData.length);
+            charts.accel = new Chart(document.getElementById('accelChart'), {
+                type: 'line',
+                data: {
+                    labels: Array.from({ length: accelLen }, (_, i) => i),
+                    datasets: [{
+                        label: 'Longitudinal G',
+                        data: accxData.map(d => d.value),
+                        borderColor: '#f5576c',
+                        backgroundColor: 'rgba(245, 87, 108, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3
+                    }, {
+                        label: 'Lateral G',
+                        data: accyData.map(d => d.value),
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3
+                    }]
+                },
+                options: chartOptions
+            });
+
+            updateOverlayChart();
+        }
+    </script>
+</body>
+</html>
